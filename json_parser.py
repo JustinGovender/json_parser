@@ -12,16 +12,12 @@ def json_parse(file, key_list):
 
 def recursive_dict_unpacker(json_dict, key_list):
     output = ''
-    # Go through the dictionary looking for lists
-    for value in json_dict.values():
+    for i, value in json_dict.items():
+        if i in key_list:
+            output += json_dict.get(i) + '\n'
         if isinstance(value, list):
             # If the value is a list then call the list fn
             output += recursive_list_unpacker(value, key_list)
-
-    # Find matching key pair values
-    for i in json_dict:
-        if i in key_list:
-            output += json_dict.get(i) + '\n'
 
     return output
 
@@ -45,7 +41,7 @@ def parse_args(argv):
         '--file', default=os.path.join('.', 'json_files', 'architectures.json'),
         help='json file to be parsed')
     parser.add_argument(
-        '--keys', default=['subContent'],
+        '--keys', default=['architectureName', 'subContent'],
         help='json file keys to be searched for')
 
     return parser.parse_args(argv[1:])
