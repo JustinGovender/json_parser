@@ -42,10 +42,10 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='json_parser_args')
     # set the argument formats
     parser.add_argument(
-        '--file', default=os.path.join('.', 'json_files', 'kubernetes.json'),
+        '--file', default=os.path.join('.', 'json_files', 'architectures.json'),
         help='json file to be parsed')
     parser.add_argument(
-        '--keys', default=['title', 'text'],
+        '--keys', default=['subContent'],
         help='json file keys to be searched for')
 
     return parser.parse_args(argv[1:])
