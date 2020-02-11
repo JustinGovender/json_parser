@@ -11,24 +11,26 @@ def json_parse(file, key_list):
 
 
 def recursive_dict_unpacker(json_dict, key_list):
-    output = ''
+    output = []
     for i, value in json_dict.items():
         if i in key_list:
-            output += json_dict.get(i) + '\n'
+            output.append(json_dict.get(i))
         if isinstance(value, list):
             # If the value is a list then call the list fn
-            output += recursive_list_unpacker(value, key_list)
+            for j in recursive_list_unpacker(value, key_list):
+                output.append(j)
 
     return output
 
 
 def recursive_list_unpacker(json_list, key_list):
-    output = ''
+    output = []
     # Go through the list looking for dictionaries
     for i in json_list:
         if isinstance(i, dict):
             # Call recursive dict fn
-            output += recursive_dict_unpacker(i, key_list)
+            for j in recursive_dict_unpacker(i, key_list):
+                output.append(j)
     return output
 
 
@@ -50,4 +52,4 @@ def parse_args(argv):
 if __name__ == '__main__':
     args = parse_args(sys.argv)
     text = json_parse(args.file, args.keys)
-    print(text)
+    print('\n'.join(text))
