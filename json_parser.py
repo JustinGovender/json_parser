@@ -1,6 +1,5 @@
 import os
 import sys
-from shutil import copy2
 import argparse
 import json
 import pandas as pd
@@ -11,37 +10,59 @@ from collections import deque
 GOOGLE_SPLIT_SIZE = 100
 
 
+def recursive_dict_unpacker(json_dict, key_list, translate=False, references=None):
+    output = []
+    for i, value in json_dict.items():
+        if i in key_list:
+            if translate:
+                json_dict[i] = references[value]
+            else:
+                output.append(json_dict.get(i))
+        if isinstance(value, list):
+            # If the value is a list then call the list fn
+            for j in recursive_list_unpacker(value, key_list, translate=translate, references=references):
+                output.append(j)
+
+    return output
+
+
+def recursive_list_unpacker(json_list, key_list, translate=False, references=None):
+    output = []
+    # Go through the list looking for dictionaries
+    for i in json_list:
+        if isinstance(i, dict):
+            # Call recursive dict fn
+            for j in recursive_dict_unpacker(i, key_list, translate=translate, references=references):
+                output.append(j)
+    return output
+
+
 def json_parse(file, key_list):
     with open(file, 'r') as f:
         json_list = json.load(f)
         return recursive_list_unpacker(json_list, key_list)
 
 
-def json_replace(file, key_list, target_lang, source_list, reference_list):
+def json_replace(file, key_list, target_lang, reference_dict):
     # Duplicate original file
-    new_filepath = os.path.join('.', os.path.basename(file) + '_' + target_lang)
-    # Set up deque
-    reference_deque = deque(reference_list)
-    source_deque = deque(source_list)
+    new_filepath = os.path.join('.', os.path.splitext((os.path.basename(file)))[0] + '_' + target_lang + '.json')
     # Translate json dictionary
     with open(file, 'r') as f:
         json_list = json.load(f)
-        recursive_list_unpacker(json_list, key_list, translate=True,
-                                source_deque=source_deque, reference_deque=reference_deque)
-    print('omg it worked?')
+        recursive_list_unpacker(json_list, key_list, translate=True, references=reference_dict)
     # Dump to file
     with open(new_filepath, 'w', encoding='utf8') as fp:
         json.dump(json_list, fp, indent=2, ensure_ascii=False, )
     return
 
 
-
 def json_translate(file, key_list, source_lang, target_lang):
-    reference_list = []
+    reference_dict = {}
     # Get the list of tags
     source_list = json_parse(file, key_list)
+    # google_api.py will split any line that has a \n character so change them to a special sequence
     for i, val in enumerate(source_list):
-        source_list[i] = re.sub(r'$[\n]', '', val)
+        source_list[i] = val.replace('\n', '<gconnl>')
     # Translate the list of tags
     src_text_size = len(source_list)
     src_text_slice_count = src_text_size // GOOGLE_SPLIT_SIZE + 1
@@ -56,42 +77,17 @@ def json_translate(file, key_list, source_lang, target_lang):
         df = pd.DataFrame(sub_list)
         df = df.drop_duplicates()
         translated = google_translate('\n'.join(df[0].tolist()), source_lang, target_lang)
-        # Reconstruct matched list including duplicates
-        translated_list = [translated[sentence] for sentence in sub_list]
-        reference_list.extend(translated_list)
+        reference_dict.update(translated)
 
-    # Now open
-    json_replace(file, key_list, target_lang, source_list, reference_list)
-
-
-def recursive_dict_unpacker(json_dict, key_list, translate=False, source_deque=None, reference_deque=None):
-    output = []
-    for i, value in json_dict.items():
-        if i in key_list:
-            if translate:
-                json_dict[i] = reference_deque.popleft()
-                source_deque.popleft()
-            else:
-                output.append(json_dict.get(i))
-        if isinstance(value, list):
-            # If the value is a list then call the list fn
-            for j in recursive_list_unpacker(value, key_list, translate=translate,
-                                             source_deque=source_deque, reference_deque=reference_deque):
-                output.append(j)
-
-    return output
-
-
-def recursive_list_unpacker(json_list, key_list, translate=False, source_deque=None, reference_deque=None):
-    output = []
-    # Go through the list looking for dictionaries
-    for i in json_list:
-        if isinstance(i, dict):
-            # Call recursive dict fn
-            for j in recursive_dict_unpacker(i, key_list, translate=translate,
-                                             source_deque=source_deque, reference_deque=reference_deque):
-                output.append(j)
-    return output
+    # Put newlines back in
+    for key, value in reference_dict.items():
+        if '<gconnl>' in key:
+            # Create new entry with correct values
+            reference_dict[key.replace('<gconnl>', '\n')] = value.replace('<gconnl>', '\n')
+            # Remove old key
+            del reference_dict[key]
+    # Create new translated file
+    json_replace(file, key_list, target_lang, reference_dict=reference_dict)
 
 
 def parse_args(argv):
@@ -103,7 +99,8 @@ def parse_args(argv):
         '--file', default=os.path.join('.', 'json_files', 'architectures.json'),
         help='json file to be parsed')
     parser.add_argument(
-        '--keys', default=['architectureName', 'subContent'],
+        '--keys',
+        default=['architectureName', 'architectureSummary', 'architectureTitle', 'architectureIntro', 'subContent', 'subTitle'],
         help='json file keys to be searched for')
     parser.add_argument(
         '--source_lang', default='ko',
@@ -117,5 +114,4 @@ def parse_args(argv):
 
 if __name__ == '__main__':
     args = parse_args(sys.argv)
-    text = json_translate(args.file, args.keys, args.source_lang, args.target_lang)
-    # text = json_parse(args.file, args.keys)
+    json_translate(args.file, args.keys, args.source_lang, args.target_lang)
