@@ -48,7 +48,7 @@ def json_parse(file, tag_list):
         return recursive_list_unpacker(json_list, tag_list)
 
 
-def json_replace(file, key_list, target_lang, reference_dict):
+def json_replace(file, key_list, target_lang, indent, reference_dict):
     # Duplicate original file
     new_filepath = os.path.join('.', os.path.splitext((os.path.basename(file)))[0] + '_' + target_lang + '.json')
     # Translate json dictionary
@@ -57,11 +57,11 @@ def json_replace(file, key_list, target_lang, reference_dict):
         recursive_list_unpacker(json_list, key_list, translate=True, references=reference_dict)
     # Dump to file
     with open(new_filepath, 'w', encoding='utf8') as fp:
-        json.dump(json_list, fp, indent=2, ensure_ascii=False, )
+        json.dump(json_list, fp, indent=indent, ensure_ascii=False, )
     return
 
 
-def json_translate(file, tag_list, source_lang, target_lang):
+def json_translate(file, tag_list, source_lang, target_lang, indent):
     """
     Creates a new json file with the contents from the specified tags translated into the target language.
     :param file: The json file to be translated.
@@ -74,10 +74,11 @@ def json_translate(file, tag_list, source_lang, target_lang):
     reference_dict = {}
     # Get the list of tags
     source_list = json_parse(file, tag_list)
-    # google_api.py will split any line that has a \n character so change them to a special sequence
+    # Preserve special characters by replacing them with unique tags
     for i, val in enumerate(source_list):
         val = val.replace('\n', '<gconnl>')
         source_list[i] = val.replace('  ', '<gconspace>')
+        source_list[i] = val.replace('\t', '<gcontab>')
 
     # Translate the list of tags
     src_text_size = len(source_list)
@@ -95,21 +96,22 @@ def json_translate(file, tag_list, source_lang, target_lang):
         translated = google_translate('\n'.join(df[0].tolist()), source_lang, target_lang)
         reference_dict.update(translated)
 
-    # Put newlines back in
+    # Put special characters back
     new_dict = {}
     for key in reference_dict.keys():
         if any(word in key for word in ['<gconnl>', '<gconspace>']):
             # Create new entry with correct values
             new_key = key.replace('<gconnl>', '\n')
             new_key = new_key.replace('<gconspace>', '  ')
+            new_key = new_key.replace('<gcontab>', '\t')
             new_value = reference_dict[key].replace('<gconnl>', '\n')
-            new_value = new_value.replace('<gconspace>', '  ')
+            new_value = new_value.replace('<gcontab>', '\t')
 
             new_dict[new_key] = new_value
         else:
             new_dict[key] = reference_dict[key]
     # Create new translated file
-    json_replace(file, tag_list, target_lang, reference_dict=new_dict)
+    json_replace(file, tag_list, target_lang, indent, reference_dict=new_dict)
     # except Exception as e:
     #     print(e)
 
@@ -120,11 +122,11 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='json_parser_args')
     # set the argument formats
     parser.add_argument(
-        '--file', default=os.path.join('.', 'json_files', 'cloudFunctions.json'),
+        '--file', default=os.path.join('.', 'json_files', 'backup.json'),
         help='json file to be parsed')
     parser.add_argument(
         '--tags',
-        default=['text', 'title'],
+        default=['text', 'title', 'desc'],
         help='json file keys to be searched for')
     parser.add_argument(
         '--source_lang', default='ko',
@@ -132,10 +134,13 @@ def parse_args(argv):
     parser.add_argument(
         '--target_lang', default='en',
         help='language to be translated to')
+    parser.add_argument(
+        '--json_indent', default=4,
+        help='number of spaces the translated json file should be indented')
 
     return parser.parse_args(argv[1:])
 
 
 if __name__ == '__main__':
     args = parse_args(sys.argv)
-    json_translate(args.file, args.tags, args.source_lang, args.target_lang)
+    json_translate(args.file, args.tags, args.source_lang, args.target_lang, args.json_indent)
