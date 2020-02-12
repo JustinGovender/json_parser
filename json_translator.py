@@ -5,7 +5,6 @@ import json
 import pandas as pd
 from google_api import google_translate
 
-
 GOOGLE_SPLIT_SIZE = 100
 
 
@@ -68,9 +67,9 @@ def json_translate(file, tag_list, source_lang, target_lang, indent):
     :param tag_list: The list of tags whose content will be translated.
     :param source_lang: The language to be translated from.
     :param target_lang: The language to be translated to.
+    :param indent: Amount of spaces the translated json file will be indented by.
     :return: Creates a translated file but does not return anything.
     """
-    # try:
     reference_dict = {}
     # Get the list of tags
     source_list = json_parse(file, tag_list)
@@ -112,8 +111,6 @@ def json_translate(file, tag_list, source_lang, target_lang, indent):
             new_dict[key] = reference_dict[key]
     # Create new translated file
     json_replace(file, tag_list, target_lang, indent, reference_dict=new_dict)
-    # except Exception as e:
-    #     print(e)
 
 
 def parse_args(argv):
