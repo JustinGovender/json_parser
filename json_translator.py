@@ -36,10 +36,16 @@ def recursive_list_unpacker(json_list, key_list, translate=False, references=Non
     return output
 
 
-def json_parse(file, key_list):
+def json_parse(file, tag_list):
+    """
+    Gets the contents from tags specified by the tag list from a json file.
+    :param file: The json file to be parsed
+    :param tag_list: The list of tags whose content will be returned
+    :return: returns a list containing contents of the specified tags
+    """
     with open(file, 'r') as f:
         json_list = json.load(f)
-        return recursive_list_unpacker(json_list, key_list)
+        return recursive_list_unpacker(json_list, tag_list)
 
 
 def json_replace(file, key_list, target_lang, reference_dict):
@@ -55,10 +61,18 @@ def json_replace(file, key_list, target_lang, reference_dict):
     return
 
 
-def json_translate(file, key_list, source_lang, target_lang):
+def json_translate(file, tag_list, source_lang, target_lang):
+    """
+    Creates a new json file with the contents from the specified tags translated into the target language.
+    :param file: The json file to be translated.
+    :param tag_list: The list of tags whose content will be translated.
+    :param source_lang: The language to be translated from.
+    :param target_lang: The language to be translated to.
+    :return: Creates a translated file but does not return anything.
+    """
     reference_dict = {}
     # Get the list of tags
-    source_list = json_parse(file, key_list)
+    source_list = json_parse(file, tag_list)
     # google_api.py will split any line that has a \n character so change them to a special sequence
     for i, val in enumerate(source_list):
         source_list[i] = val.replace('\n', '<gconnl>')
@@ -86,7 +100,7 @@ def json_translate(file, key_list, source_lang, target_lang):
             # Remove old key
             del reference_dict[key]
     # Create new translated file
-    json_replace(file, key_list, target_lang, reference_dict=reference_dict)
+    json_replace(file, tag_list, target_lang, reference_dict=reference_dict)
 
 
 def parse_args(argv):
@@ -98,7 +112,7 @@ def parse_args(argv):
         '--file', default=os.path.join('.', 'json_files', 'kubernetes.json'),
         help='json file to be parsed')
     parser.add_argument(
-        '--keys',
+        '--tags',
         default=['text', 'title'],
         help='json file keys to be searched for')
     parser.add_argument(
@@ -113,4 +127,4 @@ def parse_args(argv):
 
 if __name__ == '__main__':
     args = parse_args(sys.argv)
-    json_translate(args.file, args.keys, args.source_lang, args.target_lang)
+    json_translate(args.file, args.tags, args.source_lang, args.target_lang)
