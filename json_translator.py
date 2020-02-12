@@ -70,40 +70,41 @@ def json_translate(file, tag_list, source_lang, target_lang):
     :param target_lang: The language to be translated to.
     :return: Creates a translated file but does not return anything.
     """
-    try:
-        reference_dict = {}
-        # Get the list of tags
-        source_list = json_parse(file, tag_list)
-        # google_api.py will split any line that has a \n character so change them to a special sequence
-        for i, val in enumerate(source_list):
-            source_list[i] = val.replace('\n', '<gconnl>')
-        # Translate the list of tags
-        src_text_size = len(source_list)
-        src_text_slice_count = src_text_size // GOOGLE_SPLIT_SIZE + 1
-        for i in range(src_text_slice_count):
-            start_pos = i * GOOGLE_SPLIT_SIZE
-            end_pos = start_pos + GOOGLE_SPLIT_SIZE
-            if end_pos > src_text_size:
-                sub_list = source_list[start_pos:]
-            else:
-                sub_list = source_list[start_pos:end_pos]
-            # Google translate automatically skips duplicates so avoid sending
-            df = pd.DataFrame(sub_list)
-            df = df.drop_duplicates()
-            translated = google_translate('\n'.join(df[0].tolist()), source_lang, target_lang)
-            reference_dict.update(translated)
+    # try:
+    reference_dict = {}
+    # Get the list of tags
+    source_list = json_parse(file, tag_list)
+    # google_api.py will split any line that has a \n character so change them to a special sequence
+    for i, val in enumerate(source_list):
+        source_list[i] = val.replace('\n', '<gconnl>')
+    # Translate the list of tags
+    src_text_size = len(source_list)
+    src_text_slice_count = src_text_size // GOOGLE_SPLIT_SIZE + 1
+    for i in range(src_text_slice_count):
+        start_pos = i * GOOGLE_SPLIT_SIZE
+        end_pos = start_pos + GOOGLE_SPLIT_SIZE
+        if end_pos > src_text_size:
+            sub_list = source_list[start_pos:]
+        else:
+            sub_list = source_list[start_pos:end_pos]
+        # Google translate automatically skips duplicates so avoid sending
+        df = pd.DataFrame(sub_list)
+        df = df.drop_duplicates()
+        translated = google_translate('\n'.join(df[0].tolist()), source_lang, target_lang)
+        reference_dict.update(translated)
 
-        # Put newlines back in
-        for key, value in reference_dict.items():
-            if '<gconnl>' in key:
-                # Create new entry with correct values
-                reference_dict[key.replace('<gconnl>', '\n')] = value.replace('<gconnl>', '\n')
-                # Remove old key
-                del reference_dict[key]
-        # Create new translated file
-        json_replace(file, tag_list, target_lang, reference_dict=reference_dict)
-    except Exception as e:
-        print(e)
+    # Put newlines back in
+    new_dict = {}
+    for key in reference_dict.keys():
+        if '<gconnl>' in key:
+            # Create new entry with correct values
+            new_dict[key.replace('<gconnl>', '\n')] = reference_dict[key].replace('<gconnl>', '\n')
+        else:
+            new_dict[key] = reference_dict[key]
+    # Create new translated file
+    json_replace(file, tag_list, target_lang, reference_dict=new_dict)
+    # except Exception as e:
+    #     print(e)
 
 
 def parse_args(argv):
@@ -112,7 +113,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='json_parser_args')
     # set the argument formats
     parser.add_argument(
-        '--file', default=os.path.join('.', 'json_files', 'kubernetes.json'),
+        '--file', default=os.path.join('.', 'json_files', 'cloudFunctions.json'),
         help='json file to be parsed')
     parser.add_argument(
         '--tags',
