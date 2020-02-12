@@ -76,8 +76,9 @@ def json_translate(file, tag_list, source_lang, target_lang, indent):
     # Preserve special characters by replacing them with unique tags
     for i, val in enumerate(source_list):
         val = val.replace('\n', '<gconnl>')
-        source_list[i] = val.replace('  ', '<gconspace>')
-        source_list[i] = val.replace('\t', '<gcontab>')
+        val = val.replace('  ', '<gconspace>')
+        val = val.replace('\t', '<gcontab>')
+        source_list[i] = val
 
     # Translate the list of tags
     src_text_size = len(source_list)
@@ -104,6 +105,7 @@ def json_translate(file, tag_list, source_lang, target_lang, indent):
             new_key = new_key.replace('<gconspace>', '  ')
             new_key = new_key.replace('<gcontab>', '\t')
             new_value = reference_dict[key].replace('<gconnl>', '\n')
+            new_value = new_value.replace('<gconspace>', '  ')
             new_value = new_value.replace('<gcontab>', '\t')
 
             new_dict[new_key] = new_value
