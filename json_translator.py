@@ -4,8 +4,7 @@ import argparse
 import json
 import pandas as pd
 from google_api import google_translate
-import re
-from collections import deque
+
 
 GOOGLE_SPLIT_SIZE = 100
 
@@ -96,11 +95,11 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='json_parser_args')
     # set the argument formats
     parser.add_argument(
-        '--file', default=os.path.join('.', 'json_files', 'architectures.json'),
+        '--file', default=os.path.join('.', 'json_files', 'kubernetes.json'),
         help='json file to be parsed')
     parser.add_argument(
         '--keys',
-        default=['architectureName', 'architectureSummary', 'architectureTitle', 'architectureIntro', 'subContent', 'subTitle'],
+        default=['text', 'title'],
         help='json file keys to be searched for')
     parser.add_argument(
         '--source_lang', default='ko',
