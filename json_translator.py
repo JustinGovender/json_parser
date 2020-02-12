@@ -76,7 +76,9 @@ def json_translate(file, tag_list, source_lang, target_lang):
     source_list = json_parse(file, tag_list)
     # google_api.py will split any line that has a \n character so change them to a special sequence
     for i, val in enumerate(source_list):
-        source_list[i] = val.replace('\n', '<gconnl>')
+        val = val.replace('\n', '<gconnl>')
+        source_list[i] = val.replace('  ', '<gconspace>')
+
     # Translate the list of tags
     src_text_size = len(source_list)
     src_text_slice_count = src_text_size // GOOGLE_SPLIT_SIZE + 1
@@ -96,9 +98,14 @@ def json_translate(file, tag_list, source_lang, target_lang):
     # Put newlines back in
     new_dict = {}
     for key in reference_dict.keys():
-        if '<gconnl>' in key:
+        if any(word in key for word in ['<gconnl>', '<gconspace>']):
             # Create new entry with correct values
-            new_dict[key.replace('<gconnl>', '\n')] = reference_dict[key].replace('<gconnl>', '\n')
+            new_key = key.replace('<gconnl>', '\n')
+            new_key = new_key.replace('<gconspace>', '  ')
+            new_value = reference_dict[key].replace('<gconnl>', '\n')
+            new_value = new_value.replace('<gconspace>', '  ')
+
+            new_dict[new_key] = new_value
         else:
             new_dict[key] = reference_dict[key]
     # Create new translated file
